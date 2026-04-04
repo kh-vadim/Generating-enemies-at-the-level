@@ -5,37 +5,36 @@ using UnityEngine.Pool;
 public class EnemySpawner : MonoBehaviour
 {
     [Header("Настройка спавнера")]
-
-    [SerializeField] private EnemyMovement _enemyPrefab;
+    [SerializeField] private Enemy _enemyPrefab;
     [SerializeField] private Transform[] _spawnPoints;
     [SerializeField] private float _spawnDelay = 2f;
 
     [Header("Настройка пула объектов")]
-    [Tooltip("Начальное количество врагов (сколько создать сразу для готовности)")]
-    [SerializeField] private int _pollDefaultCapacity = 10;
-    [Tooltip("Максимальное количество включенных врагов в резерве пула")]
+    [Tooltip("Начальное количество врагов")]
+    [SerializeField] private int _poolDefaultCapacity = 10;
+    [Tooltip("Максимальное количество включенных врагов")]
     [SerializeField] private int _poolMaxSize = 50;
 
-    private ObjectPool<EnemyMovement> _enemyPool;
+    private ObjectPool<Enemy> _enemyPool;
 
     private void Awake()
     {
-        _enemyPool = new ObjectPool<EnemyMovement>(
+        _enemyPool = new ObjectPool<Enemy>(
             createFunc: CreateEnemy,
             actionOnGet: EnableEnemy,
             actionOnRelease: DisableEnemy,
             actionOnDestroy: DestroyEnemy,
-            defaultCapacity: _pollDefaultCapacity,
+            defaultCapacity: _poolDefaultCapacity,
             maxSize: _poolMaxSize
             );
     }
 
     private void OnEnable()
     {
-        StartCoroutine(SpawnEnemyCoroutine())  ;
+        StartCoroutine(SpawningEnemies());
     }
 
-    private IEnumerator SpawnEnemyCoroutine()
+    private IEnumerator SpawningEnemies()
     {
         WaitForSeconds wait = new WaitForSeconds(_spawnDelay);
 
@@ -46,35 +45,40 @@ public class EnemySpawner : MonoBehaviour
             int randomIndex = Random.Range(0, _spawnPoints.Length);
             Transform randomSpawnPoint = _spawnPoints[randomIndex];
 
-            EnemyMovement enemy = _enemyPool.Get();
+            Enemy enemy = _enemyPool.Get();
             enemy.transform.position = randomSpawnPoint.position;
-            enemy.transform.rotation = randomSpawnPoint.rotation;
+
+            float randomAngle = Random.Range(0f, 360f);
+
+            Vector3 randomDirection = Quaternion.Euler(0f, randomAngle, 0f) * Vector3.forward;
+
+            enemy.Initialize(randomDirection);
         }
     }
 
-    private EnemyMovement CreateEnemy()
+    private Enemy CreateEnemy()
     {
         return Instantiate(_enemyPrefab);
     }
 
-    private void EnableEnemy(EnemyMovement enemy)
+    private void EnableEnemy(Enemy enemy)
     {
-        enemy.ObstacleHit += ReturnEnemyToPoll;
+        enemy.Died += ReturnEnemyToPool;
         enemy.gameObject.SetActive(true);
     }
 
-    private void DisableEnemy(EnemyMovement enemy)
+    private void DisableEnemy(Enemy enemy)
     {
-        enemy.ObstacleHit -= ReturnEnemyToPoll;
+        enemy.Died -= ReturnEnemyToPool;
         enemy.gameObject.SetActive(false);
     }
 
-    private void DestroyEnemy(EnemyMovement enemy)
+    private void DestroyEnemy(Enemy enemy)
     {
         Destroy(enemy.gameObject);
     }
 
-    private void ReturnEnemyToPoll(EnemyMovement enemy)
+    private void ReturnEnemyToPool(Enemy enemy)
     {
         _enemyPool.Release(enemy);
     }
