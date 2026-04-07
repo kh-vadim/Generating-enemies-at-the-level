@@ -6,8 +6,7 @@ public class EnemySpawner : MonoBehaviour
 {
     [Header("Настройка спавнера")]
     [SerializeField] private Enemy _enemyPrefab;
-    [SerializeField] private Transform[] _spawnPoints;
-    [SerializeField] private float _spawnDelay = 2f;
+    [SerializeField] private TargetMarker[] _targets;
 
     [Header("Настройка пула объектов")]
     [Tooltip("Начальное количество врагов")]
@@ -29,31 +28,16 @@ public class EnemySpawner : MonoBehaviour
             );
     }
 
-    private void OnEnable()
+    public void SpawnRandomEnemy()
     {
-        StartCoroutine(SpawningEnemies());
-    }
+        if (_targets == null || _targets.Length == 0) return;
 
-    private IEnumerator SpawningEnemies()
-    {
-        WaitForSeconds wait = new WaitForSeconds(_spawnDelay);
+        TargetMarker randomTarget = _targets[Random.Range(0, _targets.Length)];
 
-        while (enabled)
-        {
-            yield return wait;
+        Enemy enemy = _enemyPool.Get();
+        enemy.transform.position = transform.position;
 
-            int randomIndex = Random.Range(0, _spawnPoints.Length);
-            Transform randomSpawnPoint = _spawnPoints[randomIndex];
-
-            Enemy enemy = _enemyPool.Get();
-            enemy.transform.position = randomSpawnPoint.position;
-
-            float randomAngle = Random.Range(0f, 360f);
-
-            Vector3 randomDirection = Quaternion.Euler(0f, randomAngle, 0f) * Vector3.forward;
-
-            enemy.Initialize(randomDirection);
-        }
+        enemy.Initialize(randomTarget.transform);
     }
 
     private Enemy CreateEnemy()
